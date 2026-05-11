@@ -1,0 +1,53 @@
+const API = "http://127.0.0.1:8000";
+
+document.getElementById("go").addEventListener("click", async () => {
+  const genre = document.getElementById("genre").value.trim();
+  const mood = document.getElementById("mood").value.trim();
+  const chordsRaw = document.getElementById("chords").value.trim();
+
+  if (!genre) {
+    alert("Please enter a genre");
+    return;
+  }
+
+  const payload = {
+    genre,
+    mood: mood || null,
+    partial_chords: chordsRaw ? chordsRaw.split(",").map(s => s.trim()).filter(Boolean) : null
+  };
+
+  const resEl = document.getElementById("results");
+  resEl.innerHTML = "<p>Loading...</p>";
+
+  try {
+    const r = await fetch(`${API}/recommend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(t);
+    }
+
+    const data = await r.json();
+    if (!data.results || data.results.length === 0) {
+      resEl.innerHTML = "<p>No recommendations found.</p>";
+      return;
+    }
+
+    resEl.innerHTML = data.results.map(item => `
+      <div class="card">
+        <h3>Scale: ${item.scale}</h3>
+        <p><strong>Scale Chords:</strong> ${item.scale_chords.join(", ") || "-"}</p>
+        <p><strong>Progression:</strong> ${item.progression_chords && item.progression_chords.length ? item.progression_chords.join(" → ") : "-"}</p>
+        <p class="muted">Match score: ${item.match_score}</p>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    console.error(err);
+    resEl.innerHTML = `<pre class="error">${err.message}</pre>`;
+  }
+});

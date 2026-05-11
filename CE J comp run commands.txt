@@ -1,0 +1,46 @@
+LOAD CSV WITH HEADERS FROM 'file:///music_scale_chord_recommender_large_dataset.csv' AS row
+RETURN row LIMIT 5;
+
+
+
+
+LOAD CSV WITH HEADERS FROM 'file:///music_scale_chord_recommender_large_dataset.csv' AS row
+
+WITH row,
+     split(replace(replace(replace(row.chord_progressions,'[',''),']',''),"'",''), ',') AS chordList
+
+MERGE (g:Genre {name: trim(row.genre)})
+MERGE (m:Mood {name: trim(row.mood)})
+MERGE (t:Tempo {value: toInteger(row.tempo)})
+MERGE (s:Scale {name: trim(row.recommended_scale)})
+
+MERGE (g)-[:HAS_MOOD]->(m)
+MERGE (g)-[:HAS_TEMPO]->(t)
+MERGE (m)-[:SUGGESTS_SCALE]->(s)
+MERGE (g)-[:RECOMMENDS_SCALE]->(s)
+
+WITH g,m,s, chordList
+
+UNWIND range(0, size(chordList)-1) AS idx
+WITH g,m,s, idx, trim(chordList[idx]) AS chordName
+
+MERGE (c:Chord {name: chordName})
+MERGE (s)-[:HAS_CHORD]->(c)
+
+
+
+
+MATCH (n) RETURN n LIMIT 50;
+
+
+
+
+Backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install fastapi uvicorn neo4j python-dotenv
+python -m uvicorn app:app --reload
+
+
+Frontend
+python -m http.server 8080
